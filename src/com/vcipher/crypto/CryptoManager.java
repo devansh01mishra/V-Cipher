@@ -2,65 +2,54 @@ package com.vcipher.crypto;
 
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
-import java.util.Arrays;
+import java.util.Base64;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class CryptoManager {
-    public byte[] encrypt(byte[] message, String password) throws Exception {
-        try {
-            SecureRandom random = new SecureRandom();
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-    
-            int size = cipher.getBlockSize();
-            byte[] salt = new byte[size], iv = new byte[size];
-            random.nextBytes(salt);
-            random.nextBytes(iv);
-    
-            cipher.init(Cipher.ENCRYPT_MODE, getKey(password, salt), new IvParameterSpec(iv));
-            byte[] encryptedMessage = cipher.doFinal(message);
 
-            byte[] combined = new byte[2*size + encryptedMessage.length]; 
-            System.arraycopy(salt, 0, combined, 0, size);
-            System.arraycopy(iv, 0, combined, size, size);
-            System.arraycopy(encryptedMessage, 0, combined, 2*size, encryptedMessage.length);
-            return combined;
-
-        } catch (Exception e) {
-            throw e;
-        }
-    }
-
-    public byte[] decrypt(byte[] encryptedData, String password) throws Exception {
-        try {
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-    
-            int size = cipher.getBlockSize();
-            byte[] salt = Arrays.copyOfRange(encryptedData,0, size);
-            byte[] iv = Arrays.copyOfRange(encryptedData, size, 2*size);
-            byte[] encryptedMessage = Arrays.copyOfRange(encryptedData, 2*size, encryptedData.length);
-    
-            cipher.init(Cipher.DECRYPT_MODE, getKey(password, salt), new IvParameterSpec(iv));
-            return cipher.doFinal(encryptedMessage);
-            
-        } catch (Exception e) {
-            throw e;
-        }
-    }
+    private static final int T_LEN = 128;
+    private static final int SALT_LEN = 16;
+    private static final int ITERATIONS = 65536;
+    private static final int KEY_LEN = 128;
 
     private SecretKey getKey(String password, byte[] salt) throws Exception {
-        try {
-            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 256);
-            SecretKey secret = factory.generateSecret(spec);
-            return new SecretKeySpec(secret.getEncoded(), "AES");
-        } catch (Exception e) {
-            throw e;
-        }
+        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+        KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LEN);
+        SecretKey secretKey = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES");
+        return secretKey;
+    }
+
+    public String encrypt(String message, String password) throws Exception {
+        byte[] messageInBytes = message.getBytes();
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        SecureRandom random = new SecureRandom();
+        byte[] salt = new byte[SALT_LEN];
+        random.nextBytes(salt);
+        cipher.init(Cipher.ENCRYPT_MODE, getKey(password, salt));
+        byte[] encryptedBytes = cipher.doFinal(messageInBytes);
+        return  encode(salt) + ":" + encode(cipher.getIV()) + ":" + encode(encryptedBytes);
+    }
+
+    public String decrypt(String encryptedData, String password) throws Exception {
+        String salt = encryptedData.split(":")[0], iv = encryptedData.split(":")[1];
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        GCMParameterSpec spec = new GCMParameterSpec(T_LEN, decode(iv));
+        cipher.init(Cipher.DECRYPT_MODE, getKey(password, decode(salt)), spec);
+        byte[] decryptedBytes = cipher.doFinal(decode(encryptedData.split(":")[2]));
+        return new String(decryptedBytes);
+    }
+
+    private String encode(byte[] data) {
+        return Base64.getEncoder().encodeToString(data) ;
+    }
+
+    private byte[] decode(String data) {
+        return Base64.getDecoder().decode(data);
     }
 }
