@@ -16,11 +16,11 @@ BUILD() {
 
 RUN() {
     if [ ! -d "bin" ]; then
-        echo "[!] Binaries not found. Running build.sh first..."
+        echo "[!] Binaries not found. Building fresh binary..."
         BUILD
     fi
 
-    echo "[*] Launching The Vishanti Cipher..."
+    echo "[*] Launching V-Cipher..."
     java -cp bin com.vcipher.Main
 }
 
@@ -47,7 +47,7 @@ TEST() {
 OUTPUT() {
     echo "[*] Checking for build binaries..."
     if [ ! -d "bin" ]; then
-        echo "[!] /bin directory not found. Running build.sh first..."
+        echo "[!] /bin directory not found. Building fresh binary..."
         BUILD
     fi
 
