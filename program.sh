@@ -4,7 +4,7 @@ set -e
 BUILD() {
     echo "[*] Cleaning old builds..."
     rm -rf bin
-    mkdir -p bin output
+    mkdir -p bin
 
     echo "[*] Compiling source files..."
     find src -name "*.java" > sources.txt
@@ -37,7 +37,7 @@ TEST() {
         rm test_sources.txt
         
         echo "[*] Running tests..."
-        java -cp "bin:bin-test" com.vcipher.test.TestRunner
+        java -cp "bin:bin-test" TestRunner
     else
         echo "[!] No test files found in test/ directory yet."
         rm test_sources.txt
