@@ -1,6 +1,11 @@
 package com.vcipher.io;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Scanner;
+
 import javax.imageio.ImageIO;
 
 public class FileManager {
@@ -25,5 +30,15 @@ public class FileManager {
         File imageFile = new File(filePath);
         image = ImageIO.read(imageFile);
         return image;
+    }
+
+    public File writeImage(BufferedImage image, String format) {
+        // Todo : Make an image file writing method
+        return null;
+    }
+    
+    public File writeMessage(String message, String format) {
+        // Todo : Make a message file writing method
+        return null;
     }
 }
