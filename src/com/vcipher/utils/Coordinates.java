@@ -1,8 +1,8 @@
 package com.vcipher.utils;
 
 public class Coordinates {
-    int x;
-    int y;
+    public int x;
+    public int y;
 
     Coordinates(int x, int y) {
         this.x = x;
