@@ -8,8 +8,8 @@ import com.vcipher.utils.Coordinates;
 
 public class BitPacker {
 
-    private static final int BYTE_IN_BITS = 8;
-    private static final int BITS_PER_PIXEL = 3;
+    public final int BYTE_IN_BITS = 8;
+    public final int BITS_PER_PIXEL = 3;
 
 
     public int getCapacity(BufferedImage image) {
@@ -58,8 +58,8 @@ public class BitPacker {
         return sb.toString();
     }
 
-    public int bitEncode(int original, int R, int G, int B) {
-        int red = (currentPixel >> 16) & 255, green = (currentPixel >> 8) & 255, blue = currentPixel & 255;
+    public int bitsEncode(int original, int R, int G, int B) {
+        int red = (original >> 16) & 255, green = (original >> 8) & 255, blue = original & 255;
         red = (red & ~1) | (R & 1);
         green = (green & ~1) | (G & 1);
         blue = (blue & ~1) | (B & 1);

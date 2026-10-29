@@ -2,9 +2,9 @@
 
 A desktop application to hide data inside images and extract data from images.
 
-## How to manage program files ?
+## How to manage program files
 
-A shell tool called `program.sh` is built to create, run, test the binary of the application. We can use the same tool to generate executable using jpackage.
+The `program.sh` script builds, runs, tests, and packages the application. Packaging requires a JDK with `jpackage` and creates a platform-specific application image in `dist/package/V-Cipher`.
 
 #### CREATE BINARY :-
 
@@ -18,7 +18,7 @@ A shell tool called `program.sh` is built to create, run, test the binary of the
 
     ./program.sh -t 
 
-#### CREATE EXE
+#### CREATE APPLICATION IMAGE
 
     ./program.sh -o <VERSION>
 
