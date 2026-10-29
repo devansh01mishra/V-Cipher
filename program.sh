@@ -1,27 +1,36 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+
+PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$PROJECT_DIR"
+
+BUILD_DIR="$PROJECT_DIR/bin"
+TEST_BUILD_DIR="$PROJECT_DIR/bin-test"
+DIST_DIR="$PROJECT_DIR/dist"
 
 BUILD() {
     echo "[*] Cleaning old builds..."
-    rm -rf bin
-    mkdir -p bin
+    rm -rf "$BUILD_DIR"
+    mkdir -p "$BUILD_DIR"
 
     echo "[*] Compiling source files..."
-    find src -name "*.java" > sources.txt
-    javac -d bin @sources.txt
-    rm sources.txt
+    local sources_file
+    sources_file="$(mktemp)"
+    find src -name "*.java" -print > "$sources_file"
+    javac -d "$BUILD_DIR" @"$sources_file"
+    rm -f "$sources_file"
 
-    echo "[✓] Build successful! Compiled classes saved to /bin"
+    echo "[✓] Build successful! Compiled classes saved to $BUILD_DIR"
 }
 
 RUN() {
-    if [ ! -d "bin" ]; then
+    if [ ! -d "$BUILD_DIR" ]; then
         echo "[!] Binaries not found. Building fresh binary..."
         BUILD
     fi
 
     echo "[*] Launching V-Cipher..."
-    java -cp bin com.vcipher.Main
+    java -cp "$BUILD_DIR" com.vcipher.Main
 }
 
 TEST() {
@@ -29,51 +38,65 @@ TEST() {
     BUILD
 
     echo "[*] Compiling test suite..."
-    mkdir -p bin-test
-    find test -name "*.java" > test_sources.txt
+    rm -rf "$TEST_BUILD_DIR"
+    mkdir -p "$TEST_BUILD_DIR"
+    local sources_file
+    sources_file="$(mktemp)"
+    find test -name "*.java" -print > "$sources_file"
 
-    if [ -s test_sources.txt ]; then
-        javac -cp bin -d bin-test @test_sources.txt
-        rm test_sources.txt
+    if [ -s "$sources_file" ]; then
+        javac -cp "$BUILD_DIR" -d "$TEST_BUILD_DIR" @"$sources_file"
+        rm -f "$sources_file"
         
         echo "[*] Running tests..."
-        java -cp "bin:bin-test" TestRunner
+        java -cp "$BUILD_DIR:$TEST_BUILD_DIR" TestRunner
     else
         echo "[!] No test files found in test/ directory yet."
-        rm test_sources.txt
+        rm -f "$sources_file"
     fi
 }
 
 OUTPUT() {
-    echo "[*] Checking for build binaries..."
-    if [ ! -d "bin" ]; then
-        echo "[!] /bin directory not found. Building fresh binary..."
-        BUILD
+    local version="${1:-}"
+    if [[ ! "$version" =~ ^[0-9][A-Za-z0-9.+-]*$ ]]; then
+        echo "[!] A valid version is required. Usage: ./program.sh -o <VERSION>" >&2
+        return 2
     fi
 
-    echo "[*] Creating distributable directory..."
-    mkdir -p dist
+    if ! command -v jpackage >/dev/null 2>&1; then
+        echo "[!] jpackage was not found. Install/use a JDK that includes jpackage." >&2
+        return 1
+    fi
 
-    echo "[*] Packaging compiled classes into executable JAR..."
-    jar --create --file="dist/vcipher.jar" --main-class="com.vcipher.Main" -C bin .
+    echo "[*] Compiling application for packaging..."
+    BUILD
 
-    echo "[*] Cleaning old package outputs..."
-    rm -rf "dir/package"
+    local input_dir="$DIST_DIR/package-input"
+    local package_dir="$DIST_DIR/package"
+    local app_image="$package_dir/V-Cipher"
+
+    echo "[*] Preparing application JAR..."
+    rm -rf "$input_dir"
+    mkdir -p "$input_dir" "$package_dir"
+    jar --create --file="$input_dir/vcipher.jar" --main-class="com.vcipher.Main" -C "$BUILD_DIR" .
+
+    echo "[*] Removing previous application image..."
+    rm -rf "$app_image"
 
     echo "[*] Building native application image using jpackage..."
     jpackage \
-        --input "dir" \
+        --input "$input_dir" \
         --name "V-Cipher" \
-        --app-version "$1" \
+        --app-version "$version" \
         --main-jar "vcipher.jar" \
         --main-class "com.vcipher.Main" \
         --type app-image \
-        --dest "dir/package" \
+        --dest "$package_dir"
     
-    echo "[✓] Success! Native application generated at: dist/package/V-Cipher"
+    echo "[✓] Success! Native application image generated at: $app_image"
 }
 
-choice=$1
+choice="${1:-}"
 
 case $choice in
     "-b")
@@ -89,6 +112,11 @@ case $choice in
     ;;
 
     "-o")
-        OUTPUT $2
+        OUTPUT "${2:-}"
+    ;;
+
+    *)
+        echo "Usage: ./program.sh {-b|-r|-t|-o <VERSION>}" >&2
+        exit 2
     ;;
 esac
